@@ -5,52 +5,51 @@ import pymysql
 app = Flask(__name__)
 CORS(app)
 
-# CONFIGURACIÓN MYSQL
-db = pymysql.connect(
-    host="mysql.railway.internal",
-    user="root",
-    password="MHaldhPJAvTVSpJcuDCXXzUtTwIAPWSE",
-    database="railway"
-)
+# FUNCIÓN DE CONEXIÓN (IMPORTANTE)
+def get_connection():
+    return pymysql.connect(
+        host="kodama.proxy.rlwy.net",
+        user="root",
+        password="MHaldhPJAvTVSpJcuDCXXzUtTwIAPWSE",  
+        database="railway",
+        port=34642,
+        cursorclass=pymysql.cursors.DictCursor
+    )
 
 # OBTENER VISITANTES
 @app.route('/visitantes', methods=['GET'])
 def obtener_visitantes():
-    cursor = db.cursor()
+    conn = get_connection()
+    cursor = conn.cursor()
+
     cursor.execute("SELECT * FROM visitantes")
     resultados = cursor.fetchall()
 
-    visitantes = []
+    conn.close()
 
-    for fila in resultados:
-        visitantes.append({
-            "id": fila[0],
-            "nombre": fila[1],
-            "identificacion": fila[2],
-            "motivo": fila[3],
-            "fecha": str(fila[4])
-        })
-
-    return jsonify(visitantes)
+    return jsonify(resultados)
 
 # GUARDAR VISITANTE
 @app.route('/visitantes', methods=['POST'])
 def guardar_visitante():
     data = request.json
 
-    nombre = data['nombre']
-    identificacion = data['identificacion']
-    motivo = data['motivo']
-
-    cursor = db.cursor()
+    conn = get_connection()
+    cursor = conn.cursor()
 
     sql = """
     INSERT INTO visitantes(nombre, identificacion, motivo)
     VALUES(%s, %s, %s)
     """
 
-    cursor.execute(sql, (nombre, identificacion, motivo))
-    db.commit()
+    cursor.execute(sql, (
+        data['nombre'],
+        data['identificacion'],
+        data['motivo']
+    ))
+
+    conn.commit()
+    conn.close()
 
     return jsonify({
         "mensaje": "Visitante registrado"
